@@ -1,0 +1,128 @@
+# Dev environment for the jvsp (Java Spring) monorepo.
+# Started by VS Code Dev Containers through docker-compose, which talks to the Podman engine over
+# its Docker-compatible API (the Windows named pipe //./pipe/docker_engine).
+#
+# Projects 04 and 05 add "redis" and "rabbitmq" services to this file.
+#
+# DEV-ONLY: every credential in this file is a fixed, throwaway local value. Never reuse them.
+
+name: jvsp
+
+services:
+  dev:
+    # Built beforehand by devcontainer.json's initializeCommand (`podman build`). Compose only
+    # runs it: Compose v5 cannot build without BuildKit, which Podman does not provide.
+    image: localhost/jvsp-dev:latest
+    pull_policy: never
+    init: true
+    # The main process runs as root only to grant "vscode" access to the engine socket at start
+    # (see docker-socket-access.sh); VS Code then attaches as remoteUser "vscode".
+    user: root
+    command: ["/usr/local/bin/docker-socket-access.sh", "sleep", "infinity"]
+
+    # The Podman machine's distro may run SELinux. A container that opens the engine socket is
+    # denied by SELinux labelling unless labels are disabled for it. Harmless when SELinux is off.
+    security_opt:
+      - label=disable
+
+    volumes:
+      # The parent folder is the git repository ("learn"); jvsp is a sub-folder of it. Mounting
+      # the repo root lets git work inside the container. The workspace is /workspaces/learn/jvsp.
+      - type: bind
+        source: ../..
+        target: /workspaces/learn
+
+      # The container engine's API socket, for Testcontainers (sibling containers, see below).
+      # Source path is resolved INSIDE the rootful Podman machine, not on Windows.
+      # /run/podman/podman.sock is the real socket that systemd's podman.socket unit creates for
+      # the rootful service, the same endpoint the Windows named pipe forwards to.
+      # /var/run/docker.sock in the machine is only an optional compatibility symlink; if it is
+      # missing, a bind mount would create an empty directory instead and fail confusingly.
+      # It is mounted at the conventional /var/run/docker.sock so all Docker clients find it.
+      - type: bind
+        source: /run/podman/podman.sock
+        target: /var/run/docker.sock
+
+      # Maven's local repository survives container rebuilds.
+      - maven-repo:/home/vscode/.m2
+      # Claude Code login, settings and history survive container rebuilds.
+      - claude-config:/home/vscode/.claude
+
+    environment:
+      # Docker API clients (docker CLI, Testcontainers' docker-java) read this. Explicit rather
+      # than relying on the default lookup.
+      DOCKER_HOST: unix:///var/run/docker.sock
+
+      # Testcontainers starts "Ryuk", a reaper container that deletes test containers when the
+      # JVM dies. Ryuk itself needs the engine socket bind-mounted, and the bind source is
+      # resolved by the ENGINE, i.e. inside the Podman machine. Without this, Testcontainers
+      # would pass the path it sees here (/var/run/docker.sock), which is not guaranteed to
+      # exist in the machine.
+      TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /run/podman/podman.sock
+
+      # Testcontainers' containers are SIBLINGS of this one (started by the same engine), and
+      # their random host ports are published on the Podman machine (the WSL VM), not on
+      # "localhost" of this container. Testcontainers only auto-detects "I am inside a container"
+      # through /.dockerenv, which Podman does not create (it creates /run/.containerenv), so it
+      # would wrongly connect to localhost.
+      # The value is this network's gateway: the VM's own bridge address, on which published
+      # ports listen (they bind 0.0.0.0 in the VM). host.containers.internal does NOT work here:
+      # on a Windows Podman machine it resolves to 192.168.127.1, the Windows side of the
+      # machine's virtual network, where these ports are not published.
+      TESTCONTAINERS_HOST_OVERRIDE: 10.89.200.1
+
+      # Run Ryuk privileged so SELinux does not block its access to the mounted socket. It is
+      # already Testcontainers' default; set here so the requirement is visible.
+      # TESTCONTAINERS_RYUK_DISABLED is deliberately NOT set: it is only needed for ROOTLESS
+      # Podman. With a rootful machine Ryuk works, and keeping it avoids leaked containers.
+      TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED: "true"
+
+      # Lets `psql` and `pg_isready` work with no flags. Same dev-only values as the postgres service.
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: dev
+      PGPASSWORD: dev
+      PGDATABASE: dev
+
+      # Claude Code writes ~/.claude.json next to ~/.claude only when this is set, so the
+      # login survives rebuilds together with the claude-config volume.
+      CLAUDE_CONFIG_DIR: /home/vscode/.claude
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: docker.io/library/postgres:19
+    restart: unless-stopped
+    environment:
+      # DEV-ONLY credentials.
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev
+    volumes:
+      # Since the 18 image, data lives in /var/lib/postgresql/<major>/docker and the volume must be
+      # mounted at /var/lib/postgresql (not .../data as in older tutorials).
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+networks:
+  # Fixed subnet so the gateway address used by TESTCONTAINERS_HOST_OVERRIDE is stable.
+  # Podman otherwise hands out 10.89.0.0/24, 10.89.1.0/24, ... in creation order. A high third
+  # octet avoids those, and stays clear of WSL's own 172.16.0.0/12 addresses.
+  default:
+    name: jvsp-dev
+    ipam:
+      config:
+        - subnet: 10.89.200.0/24
+          gateway: 10.89.200.1
+
+volumes:
+  maven-repo:
+  claude-config:
+  postgres-data:

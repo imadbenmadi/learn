@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- The parent brings two things: dependency management (the spring-boot-dependencies BOM, so
+         no library below has a version) and plugin configuration (compiler -parameters flag,
+         resource filtering, surefire/failsafe defaults, the repackage goal). -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.2.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>dev.jvsp</groupId>
+    <artifactId>rest-fundamentals</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>01-rest-fundamentals</name>
+    <description>Task API with in-memory storage</description>
+
+    <properties>
+        <java.version>25</java.version>
+        <!-- Empty default so @{argLine} below resolves even when no other plugin sets it. -->
+        <argLine/>
+    </properties>
+
+    <dependencies>
+        <!-- Spring MVC, embedded Tomcat, Jackson 3 and their auto-configuration module
+             (spring-boot-webmvc). In Boot 4 each technology ships its own auto-configuration jar. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <!-- Hibernate Validator. Its presence on the classpath is the condition that makes Boot
+             register a Validator bean and enable @Valid / @Validated. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Used here as a window into the application context: /actuator/beans, /conditions,
+             /configprops and /mappings (exposed in the dev profile only). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Generates META-INF/spring-configuration-metadata.json from TaskProperties at compile
+             time, which gives the IDE completion and documentation for the tasks.* keys. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- JUnit, AssertJ, Mockito, plus the @WebMvcTest slice and MockMvcTester. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Since JDK 23, javac no longer runs annotation processors it merely finds on the
+                 classpath, so the processor is declared explicitly. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-configuration-processor</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Mockito creates mocks by redefining classes through a Java agent. Attaching that
+                 agent at runtime is deprecated since JDK 21 (JEP 451), so it is passed on the test
+                 JVM's command line instead. The "properties" goal exposes each dependency's jar
+                 path as a property such as ${org.mockito:mockito-core:jar}. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                </configuration>
+            </plugin>
+            <!-- Surefire runs *Test classes in the "test" phase; failsafe runs *IT classes in
+                 "integration-test" and fails the build in "verify". The parent already configures
+                 the failsafe goals; declaring the plugin here switches it on. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,14 @@
+# Activated with SPRING_PROFILES_ACTIVE=prod (how a container platform would set it).
+tasks:
+  max-open-tasks: 10000
+
+management:
+  endpoint:
+    health:
+      # Load balancers only need UP/DOWN; component details would leak internals.
+      show-details: never
+
+logging:
+  level:
+    root: warn
+    dev.jvsp: info

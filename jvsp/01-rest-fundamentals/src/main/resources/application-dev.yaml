@@ -1,0 +1,20 @@
+# Activated with: ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+tasks:
+  # Small on purpose, so the open-task limit is easy to hit by hand.
+  max-open-tasks: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Views into the application context: every bean, every auto-configuration condition that
+        # matched or not, bound @ConfigurationProperties, and all request mappings.
+        include: health,info,beans,conditions,configprops,mappings
+
+logging:
+  level:
+    dev.jvsp: debug
+    # Logs every step of a request inside Spring MVC: DispatcherServlet receiving it, the handler
+    # mapping choosing the controller method, the message converter reading and writing JSON, and the
+    # final status.
+    org.springframework.web.servlet: debug

@@ -1,0 +1,39 @@
+# Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+.flattened-pom.xml
+dependency-reduced-pom.xml
+
+# Spring Boot / runtime
+HELP.md
+*.log
+logs/
+.env
+.env.*
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Eclipse / VS Code Java language server
+.classpath
+.project
+.settings/
+.factorypath
+bin/
+.vscode/*
+!.vscode/extensions.json
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

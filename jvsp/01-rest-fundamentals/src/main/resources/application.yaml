@@ -1,0 +1,16 @@
+# Base configuration, used by every profile. A profile file (application-<profile>.yaml) is loaded
+# after this one and overrides keys with the same name.
+spring:
+  application:
+    name: task-api
+
+# Bound to TaskProperties. Both keys are required: TaskProperties is validated at startup.
+tasks:
+  max-open-tasks: 100
+  default-due-in: 7d
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,40 @@
+{
+  "name": "jvsp - Spring Boot 4.2 / Java 25",
+
+  // Runs on the Windows host before Compose starts. Podman builds the image with buildah;
+  // Compose v5 could not build it because it requires BuildKit, which Podman lacks.
+  // The layer cache makes this a few seconds after the first build.
+  // On Windows it runs via `cmd.exe /c` with the jvsp folder as working directory. Relative,
+  // unquoted paths on purpose: quoted ${localWorkspaceFolder} paths get mangled by cmd quoting.
+  "initializeCommand": "podman build --tag localhost/jvsp-dev:latest --file .devcontainer/Dockerfile .devcontainer",
+
+  "dockerComposeFile": ["compose.yaml"],
+  "service": "dev",
+  "runServices": ["dev", "postgres"],
+  "workspaceFolder": "/workspaces/learn/jvsp",
+  "shutdownAction": "stopCompose",
+
+  // Non-root user from the base image. Claude Code also refuses some modes as root.
+  "remoteUser": "vscode",
+
+  // The bind-mounted Windows files may show a different owner; tell git this repo is trusted.
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/learn",
+
+  // 8080: Spring Boot apps. postgres:5432 lets host tools (DBeaver, pgAdmin) reach the DB.
+  "forwardPorts": [8080, "postgres:5432"],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "anthropic.claude-code",
+        "bierner.markdown-mermaid"
+      ],
+      "settings": {
+        "java.jdt.ls.java.home": "/usr/local/sdkman/candidates/java/current",
+        "files.eol": "\n"
+      }
+    }
+  }
+}
