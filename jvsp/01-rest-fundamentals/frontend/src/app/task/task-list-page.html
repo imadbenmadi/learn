@@ -1,0 +1,67 @@
+<div class="grid">
+  <section class="card">
+    <h2>New task <code class="muted">POST /api/tasks</code></h2>
+    <app-task-form mode="create" [action]="createTask" />
+    @if (lastCreated(); as t) {
+      <p class="notice">
+        201 Created. Spring set <code>Location: /api/tasks/{{ t.id }}</code
+        >, priority <strong>{{ t.priority }}</strong>, due <strong>{{ t.dueDate }}</strong>.
+        <a [routerLink]="['/tasks', t.id]">Open it</a>
+      </p>
+    }
+  </section>
+
+  <section class="card">
+    <h2>
+      Tasks <code class="muted">GET /api/tasks{{ status() ? '?status=' + status() : '' }}</code>
+    </h2>
+
+    <div class="chips" role="group" aria-label="Filter by status">
+      <button
+        type="button"
+        class="chip"
+        [class.chip--on]="status() === null"
+        (click)="status.set(null)"
+      >
+        All
+      </button>
+      @for (s of statuses; track s) {
+        <button
+          type="button"
+          class="chip"
+          [class.chip--on]="status() === s"
+          (click)="status.set(s)"
+        >
+          {{ label(s) }}
+        </button>
+      }
+    </div>
+
+    @if (listProblem(); as p) {
+      <app-problem-alert [problem]="p" />
+    } @else if (tasks.isLoading() && !tasks.hasValue()) {
+      <p class="muted">Loading…</p>
+    } @else {
+      <ul class="tasks">
+        @for (t of tasks.value(); track t.id) {
+          <li>
+            <a class="task" [routerLink]="['/tasks', t.id]">
+              <span class="task__title">{{ t.title }}</span>
+              <span class="task__meta">
+                <span [class]="priorityClass(t.priority)">{{ label(t.priority) }}</span>
+                <span class="badge badge--status-{{ t.status.toLowerCase() }}">{{
+                  label(t.status)
+                }}</span>
+                <span class="muted">due {{ t.dueDate | date: 'mediumDate' }}</span>
+              </span>
+            </a>
+          </li>
+        } @empty {
+          <li class="muted">
+            No tasks{{ status() ? ' with status ' + status() : '' }}. Create one.
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

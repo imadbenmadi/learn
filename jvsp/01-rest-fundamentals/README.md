@@ -413,6 +413,35 @@ SPRING_PROFILES_ACTIVE=prod TASKS_MAX_OPEN_TASKS=3 java -jar target/rest-fundame
 Port 8080 is forwarded by the dev container, so `http://localhost:8080/api/tasks` also works from a
 browser or Postman on Windows.
 
+### Frontend
+
+`frontend/` is an Angular 22 app (standalone components, signals, `httpResource`, Signal Forms,
+zoneless) for clicking through the API instead of using curl. Start the backend with the `dev`
+profile as above, then in a second terminal:
+
+```bash
+cd frontend
+npm install        # first time only
+npm start          # http://localhost:4200 (forwarded to Windows)
+npm test           # Vitest, run with:  npm test -- --watch=false
+npm run build
+```
+
+The dev server proxies `/api` and `/actuator` to `:8080` (`proxy.conf.json`). The browser therefore
+sees a single origin and no CORS is involved; CORS gets its own section in project 03. Because the
+proxy forwards the original `Host` header, the `Location` header that
+`ServletUriComponentsBuilder.fromCurrentRequest()` builds points at `:4200`: Spring builds URLs from
+the request it receives, not from its own port.
+
+| Screen | Spring behaviour it shows |
+|---|---|
+| **Tasks**: create form | `@Valid` + Bean Validation. Untick "Validate in the browser too" and submit an empty title or a past date: the 400 ProblemDetail's `errors` appear on the matching inputs, marked *server*. Create a 6th open task to get the 422 from `tasks.max-open-tasks: 5`. |
+| **Tasks**: list filter | `@RequestParam TaskStatus` conversion (`?status=DONE`). |
+| **Task**: status buttons | `TaskStatus.canTransitionTo`. The "forbidden" buttons send the transition anyway, to show the 409 and its extension members (`currentStatus`, `requestedStatus`). |
+| **Task**: edit form | PUT with `@NotNull` fields. Open `/tasks/not-a-uuid` to see the type-mismatch 400 from `ResponseEntityExceptionHandler`. |
+| **Application context** | `/actuator/beans` (our 7 beans of ~290, the CGLIB `TimeConfiguration`), `conditions` (what auto-configuration applied or backed off from), `mappings` (what `RequestMappingHandlerMapping` registered), `configprops` (the bound `TaskProperties`). |
+| **HTTP exchanges** drawer | Every request and response: status, `Content-Type` (`application/json` vs `application/problem+json`), `Location`, bodies. |
+
 ---
 
 ## Exercises

@@ -20,8 +20,9 @@
   // The bind-mounted Windows files may show a different owner; tell git this repo is trusted.
   "postCreateCommand": "git config --global --add safe.directory /workspaces/learn",
 
-  // 8080: Spring Boot apps. postgres:5432 lets host tools (DBeaver, pgAdmin) reach the DB.
-  "forwardPorts": [8080, "postgres:5432"],
+  // 8080: Spring Boot apps. 4200: Angular dev servers (each project's frontend/).
+  // postgres:5432 lets host tools (DBeaver, pgAdmin) reach the DB.
+  "forwardPorts": [8080, 4200, "postgres:5432"],
 
   "customizations": {
     "vscode": {

@@ -1,0 +1,94 @@
+<p><a routerLink="/tasks">← All tasks</a></p>
+
+@if (loadProblem(); as p) {
+  <section class="card">
+    <h2>GET /api/tasks/{{ id() }}</h2>
+    <app-problem-alert [problem]="p" />
+  </section>
+} @else if (task.hasValue()) {
+  @let t = task.value();
+  <div class="grid">
+    <section class="card">
+      <h2>{{ t.title }}</h2>
+      <dl class="facts">
+        <dt>Status</dt>
+        <dd>
+          <span class="badge badge--status-{{ t.status.toLowerCase() }}">{{
+            label(t.status)
+          }}</span>
+        </dd>
+        <dt>Priority</dt>
+        <dd>{{ label(t.priority) }}</dd>
+        <dt>Due</dt>
+        <dd>{{ t.dueDate | date: 'fullDate' }}</dd>
+        <dt>Created</dt>
+        <dd>{{ t.createdAt | date: 'medium' }}</dd>
+        <dt>Updated</dt>
+        <dd>{{ t.updatedAt | date: 'medium' }}</dd>
+        <dt>Id</dt>
+        <dd>
+          <code>{{ t.id }}</code>
+        </dd>
+      </dl>
+      @if (t.description) {
+        <p class="description">{{ t.description }}</p>
+      }
+
+      <h3>
+        Status <code class="muted">PATCH /api/tasks/{{ t.id }}/status</code>
+      </h3>
+      @if (allowed().length) {
+        <div class="chips">
+          @for (s of allowed(); track s) {
+            <button type="button" class="btn btn--primary" (click)="changeStatus(s)">
+              → {{ label(s) }}
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="muted">{{ label(t.status) }} is final: no transition is allowed.</p>
+      }
+      @if (forbidden().length) {
+        <p class="muted">Forbidden by <code>TaskStatus.canTransitionTo</code> (expect 409):</p>
+        <div class="chips">
+          @for (s of forbidden(); track s) {
+            <button type="button" class="btn btn--ghost" (click)="changeStatus(s)">
+              → {{ label(s) }}
+            </button>
+          }
+        </div>
+      }
+
+      <h3>
+        Delete <code class="muted">DELETE /api/tasks/{{ t.id }}</code>
+      </h3>
+      @if (confirmingDelete()) {
+        <div class="chips">
+          <button type="button" class="btn btn--danger" (click)="delete()">Yes, delete</button>
+          <button type="button" class="btn btn--ghost" (click)="confirmingDelete.set(false)">
+            Keep it
+          </button>
+        </div>
+      } @else {
+        <button type="button" class="btn btn--ghost" (click)="confirmingDelete.set(true)">
+          Delete…
+        </button>
+      }
+
+      @if (actionProblem(); as p) {
+        <app-problem-alert [problem]="p" />
+      }
+    </section>
+
+    <section class="card">
+      <h2>
+        Edit <code class="muted">PUT /api/tasks/{{ t.id }}</code>
+      </h2>
+      @if (formValue(); as value) {
+        <app-task-form mode="edit" [initial]="value" [action]="saveTask" />
+      }
+    </section>
+  </div>
+} @else {
+  <p class="muted">Loading…</p>
+}

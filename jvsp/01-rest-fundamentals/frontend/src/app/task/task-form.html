@@ -1,0 +1,61 @@
+<form class="stack" novalidate (submit)="onSubmit($event)">
+  <label class="field">
+    <span>Title</span>
+    <input type="text" [formField]="taskForm.title" />
+    <app-field-errors [field]="taskForm.title" />
+  </label>
+
+  <label class="field">
+    <span>Description <small class="muted">optional</small></span>
+    <textarea rows="3" [formField]="taskForm.description"></textarea>
+    <app-field-errors [field]="taskForm.description" />
+  </label>
+
+  <div class="row">
+    <label class="field">
+      <span>
+        Priority
+        @if (mode() === 'create') {
+          <small class="muted">default MEDIUM</small>
+        }
+      </span>
+      <select [formField]="taskForm.priority">
+        <option value="">{{ mode() === 'create' ? '(not sent)' : '(choose)' }}</option>
+        @for (p of priorities; track p) {
+          <option [value]="p">{{ label(p) }}</option>
+        }
+      </select>
+      <app-field-errors [field]="taskForm.priority" />
+    </label>
+
+    <label class="field">
+      <span>
+        Due date
+        @if (mode() === 'create') {
+          <small class="muted">default today + tasks.default-due-in</small>
+        }
+      </span>
+      <input type="date" [formField]="taskForm.dueDate" />
+      <app-field-errors [field]="taskForm.dueDate" />
+    </label>
+  </div>
+
+  <label class="check">
+    <input
+      type="checkbox"
+      [checked]="clientValidation()"
+      (change)="clientValidation.set(!clientValidation())"
+    />
+    Validate in the browser too (switch off to see Spring's 400 response)
+  </label>
+
+  @if (problem(); as p) {
+    <app-problem-alert [problem]="p" />
+  }
+
+  <div>
+    <button type="submit" class="btn btn--primary" [disabled]="taskForm().submitting()">
+      {{ mode() === 'create' ? 'Create task' : 'Save (PUT)' }}
+    </button>
+  </div>
+</form>

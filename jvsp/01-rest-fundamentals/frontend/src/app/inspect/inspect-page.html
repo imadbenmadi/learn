@@ -1,0 +1,176 @@
+<section class="card">
+  <h2>
+    Inside the application context <code class="muted">/actuator/{{ tab() }}</code>
+  </h2>
+
+  <div class="toolbar">
+    <div class="chips" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        class="chip"
+        [class.chip--on]="tab() === 'beans'"
+        (click)="tab.set('beans')"
+      >
+        Beans
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="chip"
+        [class.chip--on]="tab() === 'conditions'"
+        (click)="tab.set('conditions')"
+      >
+        Auto-configuration conditions
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="chip"
+        [class.chip--on]="tab() === 'mappings'"
+        (click)="tab.set('mappings')"
+      >
+        Request mappings
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="chip"
+        [class.chip--on]="tab() === 'configprops'"
+        (click)="tab.set('configprops')"
+      >
+        Config properties
+      </button>
+    </div>
+    <input type="search" placeholder="Filter…" [value]="filter()" (input)="onFilter($event)" />
+    @if (tab() !== 'conditions') {
+      <label class="check">
+        <input type="checkbox" [checked]="ownOnly()" (change)="ownOnly.set(!ownOnly())" />
+        only <code>dev.jvsp</code>
+      </label>
+    }
+  </div>
+
+  @if (unavailable()) {
+    <p class="notice notice--warn">
+      Actuator did not answer. These endpoints are exposed only by
+      <code>application-dev.yaml</code>: start the backend with
+      <code>./mvnw spring-boot:run -Dspring-boot.run.profiles=dev</code>.
+    </p>
+  } @else if (current().isLoading()) {
+    <p class="muted">Loading…</p>
+  }
+
+  @switch (tab()) {
+    @case ('beans') {
+      @if (beans(); as b) {
+        <p class="muted">
+          Showing {{ b.shown.length }} of {{ b.total }} bean definitions. The rest come from
+          auto-configuration.
+        </p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Bean name</th>
+              <th>Type</th>
+              <th>Scope</th>
+              <th>Depends on</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (bean of b.shown; track bean.name) {
+              <tr>
+                <td>
+                  <code>{{ bean.name }}</code>
+                </td>
+                <td>
+                  <code>{{ shortName(bean.type) }}</code>
+                  @if (bean.type.includes('CGLIB')) {
+                    <span class="badge badge--warn" title="@Configuration proxy subclass"
+                      >CGLIB</span
+                    >
+                  }
+                </td>
+                <td>{{ bean.scope }}</td>
+                <td>{{ bean.dependencies.join(', ') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+    @case ('conditions') {
+      @if (conditions(); as c) {
+        <p class="muted">
+          {{ c.positiveTotal }} positive and {{ c.negativeTotal }} negative matches: each
+          auto-configuration either applied or stepped aside.
+        </p>
+        <details open>
+          <summary>Applied ({{ c.positive.length }})</summary>
+          <ul class="conditions">
+            @for (p of c.positive; track p.cls) {
+              <li>
+                <code>{{ p.cls }}</code>
+                @for (o of p.outcomes; track $index) {
+                  <small class="muted">{{ o.condition }}: {{ o.message }}</small>
+                }
+              </li>
+            }
+          </ul>
+        </details>
+        <details>
+          <summary>Backed off ({{ c.negative.length }})</summary>
+          <ul class="conditions">
+            @for (n of c.negative; track n.cls) {
+              <li>
+                <code>{{ n.cls }}</code>
+                @for (o of n.outcomes; track $index) {
+                  <small class="muted">{{ o.condition }}: {{ o.message }}</small>
+                }
+              </li>
+            }
+          </ul>
+        </details>
+      }
+    }
+    @case ('mappings') {
+      @if (mappings(); as list) {
+        <p class="muted">
+          What RequestMappingHandlerMapping registered at startup ({{ list.length }} shown).
+        </p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Predicate</th>
+              <th>Handler</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of list; track m.predicate + m.handler) {
+              <tr>
+                <td>
+                  <code>{{ m.predicate }}</code>
+                </td>
+                <td>
+                  <code>{{ m.handler }}</code>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    }
+    @case ('configprops') {
+      @if (configProps(); as list) {
+        @for (p of list; track p.bean) {
+          <h3>
+            <code>{{ p.prefix }}</code> <small class="muted">{{ p.bean }}</small>
+          </h3>
+          <pre>{{ p.properties | json }}</pre>
+        } @empty {
+          <p class="muted">No matching @ConfigurationProperties beans.</p>
+        }
+      }
+    }
+  }
+</section>
